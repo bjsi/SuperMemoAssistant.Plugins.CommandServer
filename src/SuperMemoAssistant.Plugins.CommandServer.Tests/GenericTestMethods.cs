@@ -17,7 +17,7 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Tests
 
     public void CreateInstance(params object[] activatorAgs)
     {
-      //var results = Compiler.GenerateSourceCode();
+      // var results = Compiler.GenerateSourceCode();
       var compilerResults = Compiler.Compile();
 
       var type = compilerResults.CompiledAssembly.GetType($"{Shared.NameSpace}.{Shared.ClassName}");
@@ -55,7 +55,8 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Tests
 
       CreateInstance(activatorArgs);
 
-      foreach (var e in typeof(T).GetEvents().Select(x => x.Name))
+      var events = typeof(T).GetEvents().Select(x => x.Name);
+      foreach (var e in events)
       {
         Assert.NotNull(InstantiatedObj.GetType().GetEvent(e));
       }

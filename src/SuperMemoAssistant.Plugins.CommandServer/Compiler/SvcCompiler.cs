@@ -1,6 +1,7 @@
 ﻿using Anotar.Serilog;
 using Microsoft.CSharp;
 using SuperMemoAssistant.Extensions;
+using SuperMemoAssistant.Interop.SuperMemo.Registry.Types;
 using SuperMemoAssistant.Sys.Remoting;
 using System;
 using System.CodeDom;
@@ -19,7 +20,8 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Compiler
     private object WrappedObj { get; }
     private Type WrappedObjType { get; }
     private CodeConstructor Constructor { get; set; }
-    private Dictionary<Type, object> RegistryTypeMap { get; }
+    private Dictionary<Type, Type> RegMemberToRegTypeMap { get; }
+    private HashSet<Type> Registries { get; }
 
     private const MemberAttributes PublicFinal = MemberAttributes.Public | MemberAttributes.Final;
     private readonly CompilerParameters CompilerParams = new CompilerParameters { GenerateInMemory = true, GenerateExecutable = false };
@@ -30,7 +32,7 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Compiler
                        IEnumerable<string> referencedAssemblies,
                        object wrapped, // TODO: can be null
                        Type wrappedType,
-                       Dictionary<Type, object> regMap)
+                       Dictionary<Type, Type> regMap)
 
       : base(className, nameSpace, imports)
     {
@@ -42,7 +44,8 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Compiler
       CompilerParams.ReferencedAssemblies.AddRange(referencedAssemblies.ToArray());
       this.WrappedObj = wrapped;
       this.WrappedObjType = wrappedType;
-      this.RegistryTypeMap = regMap;
+      this.RegMemberToRegTypeMap = regMap;
+      this.Registries = regMap.Values.ToHashSet();
     }
 
     public SvcCompiler WithAllAttributes()
@@ -158,7 +161,7 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Compiler
     {
 
       // Skip registry member types like IElement
-      if (RegistryTypeMap.ContainsKey(WrappedObjType))
+      if (RegMemberToRegTypeMap.ContainsKey(WrappedObjType))
         return this;
 
       // Necessary because we are using ActionProxy to sub to wrapped obj events
@@ -235,8 +238,8 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Compiler
 
     public SvcCompiler WithWrappedObjectField()
     {
-      // Skip if the Type is a Registry type
-      if (!RegistryTypeMap.ContainsKey(WrappedObjType))
+      // Skip if the Type is a Registry member type
+      if (!RegMemberToRegTypeMap.ContainsKey(WrappedObjType))
       {
         // Add wrapped object parameter
         const string parameterName = "obj";
@@ -287,18 +290,12 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Compiler
       var type = get.ReturnType;
       CodeMemberMethod newMethod = CreateMethod("Get" + propName, type, PublicFinal);
 
-      // TODO: An attempt to get tests to work.
-      //var declaringType = get.DeclaringType;
-      //bool isRegType = declaringType.GetInterfaces().Any(i => RegistryTypeMap.ContainsKey(i));
-      //if (isRegType)
-      //  declaringType = declaringType.GetInterfaces().Where(i => RegistryTypeMap.ContainsKey(i)).First();
+      bool isRegMemberType = RegMemberToRegTypeMap.ContainsKey(WrappedObjType);
 
-      bool isRegType = RegistryTypeMap.ContainsKey(WrappedObjType);
-
-      if (isRegType)
+      if (isRegMemberType)
       {
-        var regType = (typeof(RegMemberMethodTransformer<>).MakeGenericType(WrappedObjType));
-        var transformer = (ITransformer)Activator.CreateInstance(regType);
+        var regType = RegMemberToRegTypeMap[WrappedObjType];
+        var transformer = CreateTransformer(regType);
         transformer.TransformResistryMemberGetter(propName, newMethod, Constructor, TargetClass);
       }
       else
@@ -317,6 +314,14 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Compiler
       TargetClass.Members.Add(newMethod);
     }
 
+    private ITransformer CreateTransformer(Type type)
+    {
+      if (!Registries.Contains(type))
+        throw new InvalidOperationException("Failed to create transformer because type is not a registry type");
+      var transType = typeof(RegMemberMethodTransformer<>).MakeGenericType(type);
+      return (ITransformer)Activator.CreateInstance(transType, RegMemberToRegTypeMap);
+    }
+
     private void ConvertSetAccessorToMethod(MethodInfo set)
     {
       var propName = set.Name.Split('_')[1];
@@ -325,13 +330,7 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Compiler
 
       CodeMemberMethod newMethod = CreateMethod("Set" + propName, typeof(void), PublicFinal);
 
-      // TODO: An attempt to get tests to work.
-      //var declaringType = set.DeclaringType;
-      //bool isRegType = declaringType.GetInterfaces().Any(i => RegistryTypeMap.ContainsKey(i));
-      //if (isRegType)
-      //  declaringType = declaringType.GetInterfaces().Where(i => RegistryTypeMap.ContainsKey(i)).First();
-
-      bool isRegType = RegistryTypeMap.ContainsKey(WrappedObjType);
+      bool isRegMemberType = RegMemberToRegTypeMap.ContainsKey(WrappedObjType);
 
       CodeFieldReferenceExpression wrappedObjReference =
           new CodeFieldReferenceExpression(
@@ -341,20 +340,19 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Compiler
         new CodePropertyReferenceExpression(wrappedObjReference, propName);
 
       // Transformation #1
-      if (isRegType)
+      if (isRegMemberType)
       {
-        var regType = (typeof(RegMemberMethodTransformer<>).MakeGenericType(WrappedObjType));
-        var transformer = (ITransformer)Activator.CreateInstance(regType);
-
+        var regType = RegMemberToRegTypeMap[WrappedObjType];
+        var transformer = CreateTransformer(regType);
         // Changes the target property to the locally defined registry member
         targetProp = transformer.TransformSetterMethodThisParam(propName, newMethod, Constructor, TargetClass);
       }
 
       // Transformation #2
-      if (RegistryTypeMap.ContainsKey(paramType))
+      if (RegMemberToRegTypeMap.ContainsKey(paramType))
       {
-        var regType = (typeof(RegMemberMethodTransformer<>).MakeGenericType(paramType));
-        var transformer = (ITransformer)Activator.CreateInstance(regType);
+        var regType = RegMemberToRegTypeMap[paramType];
+        var transformer = CreateTransformer(regType);
 
         // Changes the target property to the locally defined registry member
         var localArg = transformer.TransformSetterMethodNonThisParam(parameter, newMethod, Constructor, TargetClass);
@@ -368,16 +366,39 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Compiler
       TargetClass.Members.Add(newMethod);
     }
 
+    // TODO: staticmethod
+    private List<MethodInfo> GetExtendedInterfaceMethods(Type t)
+    {
+      var allMethods = new List<MethodInfo>();
+      foreach (var iface in t.GetInterfaces())
+      {
+        foreach (var method in iface.GetMethods().Where(x => !x.IsSpecialName))
+        {
+          if (!allMethods.Any(x => x.Name == method.Name))
+          {
+            allMethods.Add(method);
+          }
+        }
+      }
+
+      return allMethods;
+    }
+
     public SvcCompiler WithMethods()
     {
 
       Type type = WrappedObjType;
-      bool isRegType = RegistryTypeMap.ContainsKey(WrappedObjType);
+      bool isRegMemberType = RegMemberToRegTypeMap.ContainsKey(WrappedObjType);
 
       var methods = type
         .GetMethods()
-        .Where(x => x.DeclaringType == type && !x.IsSpecialName)
-        .ToArray();
+        .Where(x => !x.IsSpecialName)
+        .Where(x => !x.GetParameters().Any(p => p.IsOut)) // TODO: excludes the Add() function on registries
+        .ToList();
+
+      // Need to add all methods from interfaces including extended interfaces
+      if (type.IsInterface)
+        methods.AddRange(GetExtendedInterfaceMethods(type));
 
       // All methods where the declaring class or a paramteter is a specical reg type
       // have to be modified to pass a unique id which is used to retrive the instance
@@ -393,11 +414,10 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Compiler
         var targetMethodRef = new CodeMethodReferenceExpression(wrappedObjReference, targetMethodName);
         var targetMethodArgs = new List<CodeExpression>();
 
-        if (isRegType)
+        if (isRegMemberType)
         {
-          var regType = (typeof(RegMemberMethodTransformer<>).MakeGenericType(type));
-          var transformer = (ITransformer)Activator.CreateInstance(regType);
-
+          var regType = RegMemberToRegTypeMap[WrappedObjType];
+          var transformer = CreateTransformer(regType);
           // Changes the target method call to the registry object retrieved inside the method
           targetMethodRef = transformer.TransformMethodThisParam(targetMethodName, newMethod, Constructor, TargetClass);
         }
@@ -406,10 +426,10 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Compiler
         {
           var t = p.ParameterType;
 
-          if (RegistryTypeMap.ContainsKey(t))
+          if (RegMemberToRegTypeMap.ContainsKey(t))
           {
-            var regType = (typeof(RegMemberMethodTransformer<>).MakeGenericType(t));
-            var transformer = (ITransformer) Activator.CreateInstance(regType);
+            var regType = RegMemberToRegTypeMap[t];
+            var transformer = CreateTransformer(regType);
             transformer.TransformMethodNonThisParam(p, targetMethodArgs, newMethod, Constructor, TargetClass);
           }
           else

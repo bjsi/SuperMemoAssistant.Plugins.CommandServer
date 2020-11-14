@@ -4,11 +4,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Xunit;
 
-namespace SuperMemoAssistant.Plugins.CommandServer.Tests.RegistryMemberTests
+namespace SuperMemoAssistant.Plugins.CommandServer.Tests.RegistryMemberTests.Specific
 {
-  public class IConceptTests : GenericRegMemberTestMethods<IConcept>
+  public class IImageTests : GenericRegMemberTestMethods<IImage>
   {
   }
 }

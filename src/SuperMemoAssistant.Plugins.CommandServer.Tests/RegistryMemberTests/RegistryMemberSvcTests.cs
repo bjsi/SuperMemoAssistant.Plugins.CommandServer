@@ -27,7 +27,7 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Tests
                                      refs,
                                      Element,
                                      typeof(IElement),
-                                     Shared.RegistryMap);
+                                     Shared.RegMemberToRegTypeMap);
 
       compiler.WithWrappedObjectField()
               .WithEvents();
@@ -56,7 +56,7 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Tests
                                      refs,
                                      Element,
                                      typeof(IElement),
-                                     Shared.RegistryMap);
+                                     Shared.RegMemberToRegTypeMap);
 
       compiler.WithWrappedObjectField()
               .WithMethods();
@@ -90,7 +90,7 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Tests
                                      refs,
                                      Element,
                                      typeof(IElement),
-                                     Shared.RegistryMap);
+                                     Shared.RegMemberToRegTypeMap);
 
       compiler.WithWrappedObjectField()
               .WithPropertiesAsMethods();

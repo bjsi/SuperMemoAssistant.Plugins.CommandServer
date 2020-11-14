@@ -2,6 +2,7 @@
 using SuperMemoAssistant.Interop.SuperMemo.Registry.Members;
 using SuperMemoAssistant.Interop.SuperMemo.Registry.Types;
 using SuperMemoAssistant.Plugins.CommandServer.Compiler;
+using SuperMemoAssistant.Plugins.CommandServer.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,11 +15,13 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Tests.RegistryMemberTests
   public abstract class GenericRegMemberTestMethods<T> : GenericTestMethods<T> where T : class
   {
     public T MockRegMember { get; } = Substitute.For<T>();
-    public IRegistry<T> MockReg { get; } = Substitute.For<IRegistry<T>>();
+    public object MockReg { get; }
 
     public GenericRegMemberTestMethods()
     {
       Compiler = Shared.CreateCompiler<T>(null);
+      var regType = Shared.RegMemberToRegTypeMap[typeof(T)];
+      MockReg = Substitute.For(new Type[] { regType }, null);
     }
 
     [Fact]

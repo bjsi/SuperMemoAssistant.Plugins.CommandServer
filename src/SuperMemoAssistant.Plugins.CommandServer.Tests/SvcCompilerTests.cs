@@ -66,7 +66,7 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Tests
                                      refs,
                                      obj,
                                      typeof(Test),
-                                     Shared.RegistryMap);
+                                     Shared.RegMemberToRegTypeMap);
 
       compiler.WithWrappedObjectField()
               .WithEvents();
@@ -94,7 +94,7 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Tests
                                      refs,
                                      obj,
                                      typeof(Test),
-                                     Shared.RegistryMap);
+                                     Shared.RegMemberToRegTypeMap);
 
       compiler.WithWrappedObjectField()
               .WithMethods();
@@ -123,7 +123,7 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Tests
                                      refs,
                                      obj,
                                      typeof(Test),
-                                     Shared.RegistryMap);
+                                     Shared.RegMemberToRegTypeMap);
 
       compiler.WithWrappedObjectField()
               .WithPropertiesAsMethods();
@@ -155,7 +155,7 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Tests
                                      refs,
                                      obj,
                                      typeof(Test),
-                                     Shared.RegistryMap);
+                                     Shared.RegMemberToRegTypeMap);
 
       compiler.WithWrappedObjectField();
 

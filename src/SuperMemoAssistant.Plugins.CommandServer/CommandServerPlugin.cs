@@ -82,8 +82,8 @@ namespace SuperMemoAssistant.Plugins.CommandServer
 
     private JsonRpc Rpc { get; set; }
 
-    private Dictionary<Type, object> RegistryMap = RefEx.CreateRegistryMap(SuperMemoAssistant.Services.Svc.SM.Registry);
-
+    private static Dictionary<Type, Type> RegMemberToRegTypeMap { get; } = RefEx.CreateRegistryMap(Svc.SM.Registry);
+    private HashSet<Type> Registries { get; } = RegMemberToRegTypeMap.Values.ToHashSet();
     private static SvcContainer Container { get; } = new SvcContainer();
     private SvcResolver Resolver { get; } = new SvcResolver(Container);
 
@@ -100,7 +100,7 @@ namespace SuperMemoAssistant.Plugins.CommandServer
     {
 
       // Add registries as preexisting services
-      foreach (var reg in RegistryMap.Values)
+      foreach (var reg in Registries)
         Container.AddExistingSvc(new Service(reg));
 
       // Create interop service types
@@ -136,7 +136,7 @@ namespace SuperMemoAssistant.Plugins.CommandServer
     {
       List<Type> svcTypes = new List<Type>();
 
-      foreach (var rejObj in RegistryMap.Values)
+      foreach (var rejObj in Registries)
       {
         var fac = new SvcTypeFactory(rejObj, rejObj.GetType());
         svcTypes.Add(fac.Compile());
@@ -148,7 +148,7 @@ namespace SuperMemoAssistant.Plugins.CommandServer
     private List<Type> CreateRegistryMemberTypes()
     {
       List<Type> svcTypes = new List<Type>();
-      foreach (var regMemType in RegistryMap.Keys)
+      foreach (var regMemType in RegMemberToRegTypeMap.Keys)
       {
         var fac = new SvcTypeFactory(null, regMemType.GetType());
         svcTypes.Add(fac.Compile());

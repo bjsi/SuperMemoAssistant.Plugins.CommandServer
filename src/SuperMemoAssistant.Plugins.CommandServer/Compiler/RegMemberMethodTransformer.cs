@@ -11,35 +11,55 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Compiler
   public class RegMemberMethodTransformer<T> : ITransformer
   {
 
-    public string FirstParameterName { get; } = "id";
-    public Type FirstParameterType { get; } = typeof(int);
+    private string RegFieldName { get; set; } = "_" + typeof(T).Name.OnlyLetters();
+    private Type RegistryType { get; } = typeof(T);
+    private Type RegMemberType { get; } = typeof(T)
+      .GetInterfaces()
+      .Where(i => i.Name.StartsWith("IRegistry"))
+      .First()
+      .GetGenericArguments()
+      .First();
 
-    // TODO: What if there are multiple required registries?
-    // Use a dictionary?
-    private string RegFieldName { get; } = "_" + typeof(T).Name.OnlyLetters() + "Registry";
+    private Dictionary<Type, Type> RegMemberToRegTypeMap { get; }
+    private HashSet<Type> Registries { get; }
 
+    public RegMemberMethodTransformer(Dictionary<Type, Type> regMap)
+    {
+      this.RegMemberToRegTypeMap = regMap;
+      this.Registries = regMap.Values.ToHashSet();
+      if (!Registries.Contains(typeof(T)))
+        throw new InvalidOperationException("Generic parameter T is not a registry type");
+    }
+    
     private void AddRegFieldIfNotExists(CodeConstructor cons, CodeTypeDeclaration klass)
     {
 
       // Only add if it doesn't exist
-      // TODO: check the type NOT name
-      if (klass.Members.Cast<CodeTypeMember>().Any(x => x.Name == RegFieldName))
-        return;
-
-      // TODO: Doesn't work when testing
-      var regType = typeof(IRegistry<T>);
+      // If it already exists, update regfieldname
+      foreach (var member in klass.Members)
+      {
+        if (member is CodeMemberField f)
+        {
+          var fType = f.Type.BaseType; // TODO
+          if (fType == RegistryType.FullName)
+          {
+            RegFieldName = f.Name;
+            return;
+          }
+        }
+      }
 
       // Add Field
       CodeMemberField field = new CodeMemberField();
       field.Name = RegFieldName;
-      field.Type = new CodeTypeReference(regType);
+      field.Type = new CodeTypeReference(RegistryType);
       field.Attributes = MemberAttributes.Private;
       klass.Members.Add(field);
 
       // Add initializer to the constructor
       var parameterName = RegFieldName.ToLowerInvariant();
       cons.Parameters.Add(new CodeParameterDeclarationExpression(
-             regType, parameterName));
+             RegistryType, parameterName));
 
       // Add wrapped object field initialization logic
       CodeFieldReferenceExpression wrappedObjReference =
@@ -63,12 +83,11 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Compiler
       method.Parameters.Add(new CodeParameterDeclarationExpression(type, paramName));
 
       // Get the object with Id "thisId" from the corresponding registry
-      var thisVarType = typeof(T);
       var thisVarName = "thisObj";
 
       // Create the local variable to store the reference to ...
       var thisVarDeclaration = new CodeVariableDeclarationStatement(
-          typeof(T),
+          RegMemberType,
           thisVarName);
 
       method.Statements.Add(thisVarDeclaration);
@@ -102,7 +121,7 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Compiler
       method.Parameters.Add(new CodeParameterDeclarationExpression(paramType, paramName));
 
       // eg. IElement :: bool MoveTo(IElement parent)
-      var localVarType = typeof(T); // IElement
+      var localVarType = RegMemberType; // IElement
       var localVarName = param.Name; // eg. parent
 
       // Declare localVar
@@ -135,11 +154,10 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Compiler
       // Add as the method's first parameter
       method.Parameters.Add(new CodeParameterDeclarationExpression(paramType, paramName));
 
-      var thisVarType = typeof(T);
       var thisVarName = "obj";
       // Create the local variable to store the reference to the registry member
       var thisVarDeclaration = new CodeVariableDeclarationStatement(
-          thisVarType,
+          RegMemberType,
           thisVarName);
 
       method.Statements.Add(thisVarDeclaration);
@@ -175,13 +193,11 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Compiler
       // Add as the method's first parameter
       method.Parameters.Add(new CodeParameterDeclarationExpression(paramType, paramName));
 
-      var thisVarType = typeof(T);
-
       var thisVarName = "thisObj";
 
       // Create the local variable to store the reference to the registry member
       var thisVarDeclaration = new CodeVariableDeclarationStatement(
-          typeof(T),
+          RegMemberType,
           thisVarName);
 
       // Get the object with Id "thisId" from the corresponding registry
@@ -215,11 +231,10 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Compiler
       method.Parameters.Add(new CodeParameterDeclarationExpression(paramType, paramName));
 
       // eg. IElement :: bool MoveTo(IElement parent)
-      var localVarType = typeof(T); // IElement
       var localVarName = param.Name; // eg. parent
 
       // Declare localVar
-      var localVarDeclaration = new CodeVariableDeclarationStatement(localVarType, localVarName);
+      var localVarDeclaration = new CodeVariableDeclarationStatement(RegMemberType, localVarName);
       method.Statements.Add(localVarDeclaration);
 
       CodeFieldReferenceExpression wrappedObjReference =

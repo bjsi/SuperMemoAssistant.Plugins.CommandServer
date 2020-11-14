@@ -10,6 +10,17 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Helpers
 {
   public static class RefEx
   {
+
+    public static Type GetRegistryInterface(this Type type)
+    {
+      return type.GetInterface("IRegistry");
+    }
+
+    public static Type GetFirstGenericArg(this Type type)
+    {
+      return type.GetGenericArguments().First();
+    }
+
     public static List<object> CreateUIList(ISuperMemoUI ui)
     {
       return ui.GetType().GetProperties().Select(x => x.GetValue(ui)).ToList();
@@ -30,22 +41,21 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Helpers
       }
     }
 
-    public static Dictionary<Type, object> CreateRegistryMap(ISuperMemoRegistry reg)
+    public static Dictionary<Type, Type> CreateRegistryMap(ISuperMemoRegistry reg)
     {
       reg.ThrowIfArgumentNull("Failed to create registry map because ISuperMemoRegistry was null");
 
-      var ret = new Dictionary<Type, object>();
+      var ret = new Dictionary<Type, Type>();
       foreach (var prop in typeof(ISuperMemoRegistry).GetProperties())
       {
 
-        // TODO: IComponentRegistry doesn't implement IRegistry
         if (prop.PropertyType.Name.Contains("IComponentRegistry"))
           continue;
 
-        var i = prop.PropertyType.GetInterfaces().Where(i => i.Name.StartsWith("IRegistry")).First();
-        var regMember = i.GenericTypeArguments.First();
-        var obj = prop.GetValue(reg);
-        ret.Add(regMember, obj);
+        var registry = prop.PropertyType;
+        var regInterface = registry.GetInterfaces().Where(i => i.Name.StartsWith("IRegistry")).First();
+        var regMember = regInterface.GenericTypeArguments.First();
+        ret.Add(regMember, registry);
       }
 
       return ret;

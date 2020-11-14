@@ -10,7 +10,7 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Services
   public class SvcTypeFactory
   {
     private const string NameSpace = "CompiledServices";
-    private Dictionary<Type, object> RegistryMap { get; } = RefEx.CreateRegistryMap(Svc.SM.Registry);
+    private Dictionary<Type, Type> RegMemberToRegTypeMap { get; } = RefEx.CreateRegistryMap(Svc.SM.Registry);
     private object Object { get; }
     private Type ObjectType { get; }
     private string ClassName { get; }
@@ -27,7 +27,7 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Services
     public Type Compile()
     {
       var refs = ObjectType.GetReferencedAssemblyPaths();
-      var compiler = new SvcCompiler(ClassName, NameSpace, Array.Empty<string>(), refs, Object, ObjectType, RegistryMap);
+      var compiler = new SvcCompiler(ClassName, NameSpace, Array.Empty<string>(), refs, Object, ObjectType, RegMemberToRegTypeMap);
       var compilerResults = compiler.WithAllAttributes().Compile();
       return compilerResults.CompiledAssembly.GetType($"{NameSpace}.{ClassName}");
     }
