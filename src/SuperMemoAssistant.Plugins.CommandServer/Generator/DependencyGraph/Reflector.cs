@@ -5,7 +5,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace SuperMemoAssistant.Plugins.CommandServer.Generator
+namespace SuperMemoAssistant.Plugins.CommandServer.Generator.DependencyGraph
 {
   // From: https://github.com/marccarre/DependencyGraph 
   public class Reflector

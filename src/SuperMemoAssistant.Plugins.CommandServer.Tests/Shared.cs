@@ -13,11 +13,13 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Tests
 
   public static class Shared
   {
+
     public static string[] Imports = Array.Empty<string>();
     public static string ClassName { get; } = "TestClass";
     public static string NameSpace { get; } = "TestNamespace";
-    private static ISuperMemoRegistry Registry { get; } = Substitute.For<ISuperMemoRegistry>();
-    public static Dictionary<Type, Type> RegMemberToRegTypeMap = RefEx.CreateRegistryMap(Registry);
+    private static ISuperMemoRegistry SuperMemoRegistry { get; } = Substitute.For<ISuperMemoRegistry>();
+    private static ISuperMemoUI SuperMemoUI { get; } = Substitute.For<ISuperMemoUI>();
+    public static Dictionary<Type, Type> RegMemberToRegTypeMap = RefEx.CreateRegistryMap(SuperMemoRegistry);
 
     public static SvcCompiler CreateCompiler<T>(T obj)
     {

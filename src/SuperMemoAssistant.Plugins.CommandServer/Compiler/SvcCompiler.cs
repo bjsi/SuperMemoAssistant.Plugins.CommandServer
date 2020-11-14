@@ -2,6 +2,7 @@
 using Microsoft.CSharp;
 using SuperMemoAssistant.Extensions;
 using SuperMemoAssistant.Interop.SuperMemo.Registry.Types;
+using SuperMemoAssistant.Plugins.CommandServer.Helpers;
 using SuperMemoAssistant.Sys.Remoting;
 using System;
 using System.CodeDom;
@@ -366,24 +367,6 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Compiler
       TargetClass.Members.Add(newMethod);
     }
 
-    // TODO: staticmethod
-    private List<MethodInfo> GetExtendedInterfaceMethods(Type t)
-    {
-      var allMethods = new List<MethodInfo>();
-      foreach (var iface in t.GetInterfaces())
-      {
-        foreach (var method in iface.GetMethods().Where(x => !x.IsSpecialName))
-        {
-          if (!allMethods.Any(x => x.Name == method.Name))
-          {
-            allMethods.Add(method);
-          }
-        }
-      }
-
-      return allMethods;
-    }
-
     public SvcCompiler WithMethods()
     {
 
@@ -398,7 +381,7 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Compiler
 
       // Need to add all methods from interfaces including extended interfaces
       if (type.IsInterface)
-        methods.AddRange(GetExtendedInterfaceMethods(type));
+        methods.AddRange(type.GetExtendedInterfaceMethods());
 
       // All methods where the declaring class or a paramteter is a specical reg type
       // have to be modified to pass a unique id which is used to retrive the instance

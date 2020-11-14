@@ -10,6 +10,22 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Helpers
 {
   public static class RefEx
   {
+    public static List<MethodInfo> GetExtendedInterfaceMethods(this Type t)
+    {
+      var allMethods = new List<MethodInfo>();
+      foreach (var iface in t.GetInterfaces())
+      {
+        foreach (var method in iface.GetMethods().Where(x => !x.IsSpecialName))
+        {
+          if (!allMethods.Any(x => x.Name == method.Name))
+          {
+            allMethods.Add(method);
+          }
+        }
+      }
+
+      return allMethods;
+    }
 
     public static Type GetRegistryInterface(this Type type)
     {
@@ -83,8 +99,8 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Helpers
     /// <summary>
     /// Determine whether a type is simple
     /// or complex (i.e. custom class with public properties and methods).
+    /// BUT excluding value types - enums and structs
     /// </summary>
-    /// <see cref="http://stackoverflow.com/questions/2442534/how-to-test-if-type-is-primitive"/>
     public static bool IsSimpleType(
       this Type type)
     {
@@ -92,7 +108,6 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Helpers
       type.ThrowIfArgumentNull("Failed to check if type is simple type because type was null");
 
       return
-        type.IsValueType ||
         type.IsPrimitive ||
         new Type[] {
         typeof(String),
