@@ -1,19 +1,16 @@
-﻿using SuperMemoAssistant.Interop.SuperMemo;
+﻿using SuperMemoAssistant.Interop.SuperMemo.Content;
 using SuperMemoAssistant.Interop.SuperMemo.Content.Controls;
+using SuperMemoAssistant.Interop.SuperMemo.Core;
+using SuperMemoAssistant.Interop.SuperMemo.Elements;
 using SuperMemoAssistant.Interop.SuperMemo.Elements.Models;
 using SuperMemoAssistant.Interop.SuperMemo.Elements.Types;
+using SuperMemoAssistant.Interop.SuperMemo.Learning;
+using SuperMemoAssistant.Interop.SuperMemo.Registry.Members;
 using SuperMemoAssistant.Interop.SuperMemo.UI.Element;
-using SuperMemoAssistant.Plugins.CommandServer.Generator;
-using SuperMemoAssistant.Plugins.CommandServer.Generator.DependencyGraph;
 using SuperMemoAssistant.Plugins.CommandServer.Generator.Python;
-using SuperMemoAssistant.Services;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using Xunit;
 
 namespace SuperMemoAssistant.Plugins.CommandServer.Tests.GeneratorTests
@@ -21,24 +18,73 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Tests.GeneratorTests
   public class TypeGeneratorTests
   {
     [Fact]
-    public void TestRegistryMemberType()
+    
+    public void GetsIElementRegistryRequiredTypes()
     {
-      var g = new TypeGenerator<IElement>();
-      var t = g.GetPublicFacingTypes(true);
+      var expected = new HashSet<Type>
+      {
+        typeof(IElement),
+        typeof(ElemCreationResult), // TODO: Misses the out parameter
+        typeof(ElemCreationFlags),
+        typeof(SMElementEventArgs),
+        typeof(SMElementChangedEventArgs),
+        typeof(Regex)
+      };
+
+      var actual = new TypeGenerator<IElementRegistry>().GetPublicFacingTypes(true);
+
+      Assert.Equal(expected, actual);
     }
 
     [Fact]
-    public void TestRegistryTypes()
+    public void GetsIElementRequiredTypes()
     {
-      var g = new TypeGenerator<ISuperMemoRegistry>();
-      var t = g.GetPublicFacingTypes(true);
+      var expected = new HashSet<Type>
+      {
+        typeof(ElementType),
+        typeof(IComponentGroup),
+        typeof(IElement),
+        typeof(ITemplate),
+        typeof(IConcept),
+        typeof(SMElementChangedEventArgs)
+      };
+
+      var actual = new TypeGenerator<IElement>().GetPublicFacingTypes(true);
+
+      Assert.Equal(expected, actual);
     }
 
     [Fact]
-    public void TestUITypes()
+    public void GetsIConceptRequiredTypes()
     {
-      var g = new TypeGenerator<ISuperMemoUI>();
-      var t = g.GetPublicFacingTypes(true);
+      var expected = new HashSet<Type>
+      {
+        typeof(IConceptGroup),
+        typeof(IElement)
+      };
+
+      var actual = new TypeGenerator<IConcept>().GetPublicFacingTypes(true);
+
+      Assert.Equal(expected, actual);
     }
+
+    [Fact]
+    public void GetsIElementWdwRequiredTypes()
+    {
+      var expected = new HashSet<Type>
+      {
+        typeof(IControlGroup),
+        typeof(IElement),
+        typeof(LearningMode),
+        typeof(ElementDisplayState),
+        typeof(SMDisplayedElementChangedEventArgs),
+        typeof(ElementDisplayState),
+      };
+
+      var actual = new TypeGenerator<IElementWdw>().GetPublicFacingTypes(true);
+
+      Assert.Equal(expected, actual);
+    }
+
   }
 }

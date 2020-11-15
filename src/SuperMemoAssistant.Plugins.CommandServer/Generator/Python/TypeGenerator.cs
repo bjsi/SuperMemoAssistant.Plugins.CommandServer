@@ -14,24 +14,38 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Generator.Python
   {
     private Type Type { get; } = typeof(T);
 
-    private HashSet<Type> GetMethodTypes(IEnumerable<MethodInfo> methods)
+    private HashSet<Type> GetEventTypes(IEnumerable<EventInfo> events)
     {
+      return events.Select(x => x.EventHandlerType)
+                   .Where(x => !x.IsSimpleType())
+                   .ToHashSet();
+    }
+
+    private HashSet<Type> GetPropertyTypes(IEnumerable<PropertyInfo> props)
+    {
+      return props.Where(x => !x.IsSpecialName)
+                  .Select(x => x.PropertyType)
+                  .ToHashSet();
+    }
+
+    private HashSet<Type> GetMethodTypes(IEnumerable<MethodInfo> methodInfos)
+    {
+
       var ret = new HashSet<Type>();
 
-      // get return types and parameter types where the type is not a simple type
+      var methods = methodInfos
+        .Where(x => !x.IsSpecialName);
+
       foreach (var m in methods)
       {
-        // return type
-        var retType = m.ReturnType;
-        // parameters
-        // TODO: skip out param type because it gets messed up
-        var methodTypes = m.GetParameters()
-                           .Where(x => !x.IsOut)
-                           .Select(x => x.ParameterType)
-                           .ToHashSet();
+        // Add the return type
+        ret.Add(m.ReturnType);
 
-        ret.UnionWith(methodTypes);
+        // Add the parameter types, skipping out parameters
+        // TODO: work out why out parameters mess things up
+        ret.UnionWith(m.GetParameters().Where(x => !x.IsOut).Select(x => x.ParameterType));
       }
+
       return ret;
     }
 
@@ -62,48 +76,35 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Generator.Python
 
     public HashSet<Type> GetPublicFacingTypes(bool includeProperties = false)
     {
-      var type = typeof(T);
-      var ret = new HashSet<Type>();
 
-      foreach (var p in type.GetProperties())
+      var publicFacingTypes = new HashSet<Type>();
+
+      // Methods
+      var methods = Type.GetMethods().ToHashSet();
+
+      // If the type is an interface, include the methods from extended interfaces.
+      if (Type.IsInterface)
       {
-        // get type
-        var t = p.PropertyType;
-        var allTypes = new HashSet<Type>();
-
-        var methods = t.GetMethods().Where(x => !x.IsSpecialName).ToList();
-        if (t.IsInterface)
-          methods.AddRange(t.GetExtendedInterfaceMethods());
-
-        // Do properties for tests
-        if (includeProperties)
-        {
-          var props = t.GetProperties()
-                       .Where(x => !x.IsSpecialName)
-                       .Select(x => x.PropertyType)
-                       .Where(x => !x.IsSimpleType());
-
-          allTypes.UnionWith(props);
-        }
-
-        // get methods, incl. interface extensions
-        var methodTypes = GetMethodTypes(methods);
-
-        var eventTypes = t.GetEvents()
-                          .Select(x => x.EventHandlerType)
-                          .Where(x => !x.IsSimpleType())
-                          .ToHashSet();
-
-        allTypes.UnionWith(eventTypes);
-        allTypes.UnionWith(methodTypes);
-        ret.UnionWith(FilterTypes(allTypes));
-
+        methods.UnionWith(Type.GetExtendedInterfaceMethods());
       }
 
-      return ret;
+      publicFacingTypes.UnionWith(GetMethodTypes(methods));
+
+      // Properties
+      // Not necessary in production because the properties will have been converted to methods
+      // Do include properties for tests
+
+      if (includeProperties)
+      {
+        publicFacingTypes.UnionWith(GetPropertyTypes(Type.GetProperties()));
+      }
+
+      publicFacingTypes.UnionWith(GetEventTypes(Type.GetEvents()));
+
+      return FilterTypes(publicFacingTypes);
     }
 
-    // Could be IEnumerable without T param
+    // TODO: Could be IEnumerable without T param eg. IControlGroup
     private bool IsIEnumerableType(Type type)
     {
       var iFaces = type.GetInterfaces();
