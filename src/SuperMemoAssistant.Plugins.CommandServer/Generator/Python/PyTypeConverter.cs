@@ -11,24 +11,30 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Generator.Python
   {
 
     // Simple Types 
+    // TODO: Incomplete
     public static Dictionary<Type, string> PrimitiveTypes = new Dictionary<Type, string>
     {
       { typeof(int), "int" },
-      { typeof(short), "int" },
+      { typeof(IntPtr), "int"},
       { typeof(float), "float" },
       { typeof(double), "float" },
       { typeof(string), "str" },
+      { typeof(bool), "bool" },
+      { typeof(byte), "byte" },
+      { typeof(void), "None" },
     };
 
     // SMA interop public-facing Types
-    public HashSet<Type> PublicFacingTypes;
+    public HashSet<Type> PublicFacingTypes { get; }
 
+    // TODO: Incomplete
     public Dictionary<Type, Func<Type, string>> GenericCollectionTypeConverters => new Dictionary<Type, Func<Type, string>>
     {
       { typeof(List<>), SequenceConverter },
       { typeof(IList<>), SequenceConverter },
       { typeof(IEnumerable<>), SequenceConverter },
       { typeof(Dictionary<,>), DictionaryConverter },
+      { typeof(Array), ArrayConverter },
     };
 
     public PyTypeConverter(HashSet<Type> publicTypes)
@@ -51,6 +57,11 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Generator.Python
         return ConvertPublicFacingType(type);
       }
 
+      else if (type.IsArray)
+      {
+        return ArrayConverter(type);
+      }
+
       // Check if generic collection type
       else if (type.IsGenericType)
       {
@@ -68,6 +79,12 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Generator.Python
         // unable to provide a type hint
         return null;
       }
+    }
+
+    private string ArrayConverter(Type type)
+    {
+      var arTyep = Convert(type.GetElementType());
+      return $"List[{arTyep}]";
     }
 
     private string ConvertPublicFacingType(Type type)

@@ -1,21 +1,22 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using Stubble.Core.Builders;
+using System;
+using System.IO;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace SuperMemoAssistant.Plugins.CommandServer.Generator.Python
 {
-  public class PythonClassField
+  public class PythonClassField : PythonSourceGenerator
   {
 
-    private string Name { get; }
-    private string PyType { get; }
+    public string Name { get; }
+    public string PyType { get; }
+    public string PropertyString => Generate("PythonClassField.Mustache");
+    private string TemplatePath { get; } = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"Generator\Python\Templates");
 
-    public PythonClassField(string name, string type)
+    public PythonClassField(string name, string pyType)
     {
       Name = name;
-      PyType = type;
+      PyType = pyType ?? "Any"; // If the type is unknown, put Any
     }
   }
 }

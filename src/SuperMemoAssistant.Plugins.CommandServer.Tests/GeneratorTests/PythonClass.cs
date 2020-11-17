@@ -1,4 +1,5 @@
 ﻿using SuperMemoAssistant.Interop.SuperMemo.Elements.Types;
+using SuperMemoAssistant.Plugins.CommandServer.Generator;
 using SuperMemoAssistant.Plugins.CommandServer.Generator.Python;
 using System;
 using System.Collections.Generic;
@@ -11,10 +12,22 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Tests.GeneratorTests
 {
   public class PythonClass
   {
+
+    private HashSet<Type> PublicFacingTypes = new SMATypeGenerator(Shared.SuperMemoRegistry).GetPublicFacingTypes(true);
+
     [Fact]
-    public void Blah()
+    public void TestProperties()
     {
-      var b = new PythonClassBuilder<IElement>();
+      var b = new PythonClassBuilder(typeof(IElement), PublicFacingTypes);
+      b.WithProperties();
+      var o = b.GenerateSourceCode();
+    }
+
+    [Fact]
+    public void TestMethods()
+    {
+      var b = new PythonClassBuilder(typeof(IElement), PublicFacingTypes);
+      b.WithMethods();
       var o = b.GenerateSourceCode();
     }
   }

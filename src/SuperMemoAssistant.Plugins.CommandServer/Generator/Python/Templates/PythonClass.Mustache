@@ -1,12 +1,16 @@
-﻿class {{ Name }}({{ BaseClassName }}):
+﻿class {{ ClassName }}({{ BaseClassName }}):
 
     """
     {{ Comments }}
     """
 
     {{ #Properties }}
-    {{ Property.Name }}: {{ Property.PyType }}
+    {{ PropertyString }}
     {{ /Properties }}
 
-    def __init__(self, {{ ConstructorArguments }}):
+    def __init__(self):
         pass
+
+    {{ #Methods }}
+    {{ MethodString }}
+    {{ /Methods }}

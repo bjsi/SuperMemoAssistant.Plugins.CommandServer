@@ -8,11 +8,16 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace SuperMemoAssistant.Plugins.CommandServer.Generator.Python
+namespace SuperMemoAssistant.Plugins.CommandServer.Generator
 {
-  public class TypeGenerator<T>
+  public class TypeGenerator
   {
-    private Type Type { get; } = typeof(T);
+    private Type Type { get; }
+
+    public TypeGenerator(Type t)
+    {
+      Type = t;
+    }
 
     private HashSet<Type> GetEventTypes(IEnumerable<EventInfo> events)
     {

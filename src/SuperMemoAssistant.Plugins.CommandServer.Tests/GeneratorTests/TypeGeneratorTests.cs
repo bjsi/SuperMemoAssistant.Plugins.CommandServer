@@ -7,6 +7,7 @@ using SuperMemoAssistant.Interop.SuperMemo.Elements.Types;
 using SuperMemoAssistant.Interop.SuperMemo.Learning;
 using SuperMemoAssistant.Interop.SuperMemo.Registry.Members;
 using SuperMemoAssistant.Interop.SuperMemo.UI.Element;
+using SuperMemoAssistant.Plugins.CommandServer.Generator;
 using SuperMemoAssistant.Plugins.CommandServer.Generator.Python;
 using System;
 using System.Collections.Generic;
@@ -31,7 +32,7 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Tests.GeneratorTests
         typeof(Regex)
       };
 
-      var actual = new TypeGenerator<IElementRegistry>().GetPublicFacingTypes(true);
+      var actual = new TypeGenerator(typeof(IElementRegistry)).GetPublicFacingTypes(true);
 
       Assert.Equal(expected, actual);
     }
@@ -49,7 +50,7 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Tests.GeneratorTests
         typeof(SMElementChangedEventArgs)
       };
 
-      var actual = new TypeGenerator<IElement>().GetPublicFacingTypes(true);
+      var actual = new TypeGenerator(typeof(IElement)).GetPublicFacingTypes(true);
 
       Assert.Equal(expected, actual);
     }
@@ -63,7 +64,7 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Tests.GeneratorTests
         typeof(IElement)
       };
 
-      var actual = new TypeGenerator<IConcept>().GetPublicFacingTypes(true);
+      var actual = new TypeGenerator(typeof(IConcept)).GetPublicFacingTypes(true);
 
       Assert.Equal(expected, actual);
     }
@@ -81,8 +82,7 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Tests.GeneratorTests
         typeof(ElementDisplayState),
       };
 
-      var actual = new TypeGenerator<IElementWdw>().GetPublicFacingTypes(true);
-
+      var actual = new TypeGenerator(typeof(IElementWdw)).GetPublicFacingTypes(true);
       Assert.Equal(expected, actual);
     }
 

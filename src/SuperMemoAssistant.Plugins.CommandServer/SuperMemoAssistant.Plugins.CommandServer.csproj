@@ -76,11 +76,17 @@
     <Content Include="Generator\Python\Templates\PythonClass.Mustache">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <Content Include="Generator\Python\Templates\PythonClassField.Mustache">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="Generator\Python\Templates\PythonClassMethod.Mustache">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
   <ItemGroup>
     <None Remove="Generator\Python\Templates\PythonClassMethod.Mustache" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Remove="Generator\Python\Templates\PythonClassField.Mustache" />
   </ItemGroup>
 </Project>
