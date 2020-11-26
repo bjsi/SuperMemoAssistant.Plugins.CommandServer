@@ -1,7 +1,6 @@
 ﻿using Anotar.Serilog;
 using Microsoft.CSharp;
 using SuperMemoAssistant.Extensions;
-using SuperMemoAssistant.Interop.SuperMemo.Registry.Types;
 using SuperMemoAssistant.Plugins.CommandServer.Helpers;
 using SuperMemoAssistant.Sys.Remoting;
 using System;

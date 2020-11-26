@@ -8,7 +8,6 @@ using SuperMemoAssistant.Interop.SuperMemo.Learning;
 using SuperMemoAssistant.Interop.SuperMemo.Registry.Members;
 using SuperMemoAssistant.Interop.SuperMemo.UI.Element;
 using SuperMemoAssistant.Plugins.CommandServer.Generator;
-using SuperMemoAssistant.Plugins.CommandServer.Generator.Python;
 using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;

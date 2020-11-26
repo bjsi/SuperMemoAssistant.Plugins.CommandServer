@@ -24,6 +24,7 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\..\PythonCodeBuilder\PythonCodeBuilder.csproj" />
     <ProjectReference Include="..\SuperMemoAssistant.Plugins.CommandServer\SuperMemoAssistant.Plugins.CommandServer.csproj" />
   </ItemGroup>
 	<ItemGroup>
