@@ -6,14 +6,22 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Net;
 using System.Net.WebSockets;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using Anotar.Serilog;
+using Newtonsoft.Json;
+using SMAInteropConverter;
+using SMAInteropConverter.Helpers;
 using StreamJsonRpc;
+using SuperMemoAssistant.Interop.Plugins;
+using SuperMemoAssistant.Interop.SuperMemo.Core;
+using SuperMemoAssistant.Interop.SuperMemo.Elements;
+using SuperMemoAssistant.Interop.SuperMemo.Elements.Types;
 using SuperMemoAssistant.Plugins.CommandServer.Helpers;
-using SuperMemoAssistant.Plugins.CommandServer.Services;
 using SuperMemoAssistant.Plugins.CommandServer.Services.DI;
 using SuperMemoAssistant.Services;
-using SuperMemoAssistant.Services.Sentry;
+using SuperMemoAssistant.Sys.Remoting;
 
 #region License & Metadata
 
@@ -52,12 +60,9 @@ namespace SuperMemoAssistant.Plugins.CommandServer
   // ReSharper disable once UnusedMember.Global
   // ReSharper disable once ClassNeverInstantiated.Global
   [SuppressMessage("Microsoft.Naming", "CA1724:TypeNamesShouldNotMatchNamespaces")]
-  public class CommandServerPlugin : SentrySMAPluginBase<CommandServerPlugin>
+  public class CommandServerPlugin : SMAPluginBase<CommandServerPlugin>
   {
     #region Constructors
-
-    /// <inheritdoc />
-    public CommandServerPlugin() : base("Enter your Sentry.io api key (strongly recommended)") { }
 
     #endregion
 
@@ -71,156 +76,100 @@ namespace SuperMemoAssistant.Plugins.CommandServer
 
     /// <inheritdoc />
     public override bool HasSettings => false;
-
-    public ConcurrentDictionary<string, object> Services { get; } = new ConcurrentDictionary<string, object>();
-
-    private const string Host = "localhost";
-
-    private const int Port = 13000;
-
-    private HttpListener Listener { get; } = new HttpListener();
-
-    private JsonRpc Rpc { get; set; }
-
-    private static Dictionary<Type, Type> RegMemberToRegTypeMap { get; } = RefEx.CreateRegistryMap(Svc.SM.Registry);
-    private HashSet<Type> Registries { get; } = RegMemberToRegTypeMap.Values.ToHashSet();
-    private static SvcContainer Container { get; } = new SvcContainer();
-    private SvcResolver Resolver { get; } = new SvcResolver(Container);
-
+    public CommandServerCfg Config { get; private set; }
+    private WebsocketServer Server { get; set; }
 
     #endregion
 
-
-
-
     #region Methods Impl
+
+    private List<object> GetAllPropertyValues(object obj)
+    {
+      var vals = new List<object>();
+      var type = obj.GetType();
+      foreach (var property in type.GetProperties().Where(x => !x.IsSpecialName))
+      {
+        vals.Add(property.GetValue(obj));
+      }
+
+      return vals;
+    }
+
+    private async Task LoadConfig()
+    {
+      Config = await Svc.Configuration.Load<CommandServerCfg>() ?? new CommandServerCfg();
+    }
+
+    private string GetCurrentInteropVersion()
+    {
+      var a = Assembly.GetExecutingAssembly()
+                      .GetReferencedAssemblies()
+                      .First(x => x.Name == "SuperMemoAssistant.Interop");
+      return a.Version.ToString();
+    }
+
+    private Type CompileService(List<RegistryType> regTypes, Type type)
+    {
+      var converter = new Converter(regTypes, type, s => LogTo.Debug(s));
+      var results = converter.WithGetters()
+                             .WithSetters()
+                             .WithMethods()
+                             .WithEvents()
+                             .Compile(type.GetReferencedAssemblyPaths());
+      return results.CompiledAssembly.GetType($"{type.GetSvcNamespace()}.{type.GetSvcName()}");
+    }
 
     /// <inheritdoc />
     protected override void PluginInit()
     {
 
-      // Add registries as preexisting services
-      foreach (var reg in Registries)
-        Container.AddExistingSvc(new Service(reg));
+      // LoadConfig(); // TODO
 
-      // Create interop service types
-      var regMembers = CreateRegistryMemberTypes();
-      var regRepos = CreateRegistrySvcTypes();
-      var uiSvc = CreateUISvcTypes();
+      // TODO: Swap with GetThisInterop()
+      var dll = @"C:\Users\james\.nuget\packages\supermemoassistant.interop\2.0.4.10\lib\net472\SuperMemoAssistant.Interop.dll";
+      var typeExtractor = new InteropTypeExtractor(dll);
 
-      // Add interop service types as Singleton services
-      foreach (var x in regMembers.Concat(regRepos).Concat(uiSvc))
-        Container.AddSingleton(x);
+      var regPairs = typeExtractor.GetRegistries();
 
-      // Begin the websocket server
-      Task.Run(async () => await StartListeningAsync().ConfigureAwait(false));
-
-      // Uncomment to register an event handler which will be notified when the displayed element changes
-      // Svc.SM.UI.ElementWdw.OnElementChanged += new ActionProxy<SMDisplayedElementChangedEventArgs>(OnElementChanged);
-    }
-
-    private List<Type> CreateUISvcTypes()
-    {
-
-      var ret = new List<Type>();
-      foreach (var ui in RefEx.CreateUIList(Svc.SM.UI))
+      var services = new List<object>();
+      //var skip = new string[] { "IText", "IVideo", "ISound", "IImage", "ITemplate" };
+      var skip = new string[] { "IText", "IVideo", "ISound", "IImage", "ITemplate" };
+      // Add registry services
+      foreach (var regPair in regPairs)
       {
-        var fac = new SvcTypeFactory(ui, ui.GetType());
-        ret.Add(fac.Compile());
-      }
-      return ret;
+        if (skip.Any(x => regPair.Registry.Name.Contains(x)))
+          continue;
 
-    }
-
-    private List<Type> CreateRegistrySvcTypes()
-    {
-      List<Type> svcTypes = new List<Type>();
-
-      foreach (var rejObj in Registries)
-      {
-        var fac = new SvcTypeFactory(rejObj, rejObj.GetType());
-        svcTypes.Add(fac.Compile());
+        services.Add(Activator.CreateInstance(CompileService(regPairs, regPair.Registry)));
+        services.Add(Activator.CreateInstance(CompileService(regPairs, regPair.Member)));
       }
 
-      return svcTypes;
-    }
-
-    private List<Type> CreateRegistryMemberTypes()
-    {
-      List<Type> svcTypes = new List<Type>();
-      foreach (var regMemType in RegMemberToRegTypeMap.Keys)
+      var uis = typeExtractor.GetUITypes();
+      foreach (var ui in uis)
       {
-        var fac = new SvcTypeFactory(null, regMemType.GetType());
-        svcTypes.Add(fac.Compile());
+        services.Add(Activator.CreateInstance(CompileService(regPairs, ui)));
       }
-      return svcTypes;
+
+      Server = new WebsocketServer(services);
+      Server.Start("localhost", 13000);
     }
 
-    private async Task StartListeningAsync()
+    public override void Dispose()
     {
-      Listener.Start();
-      Listener.Prefixes.Add($"http://{Host}:{Port}/");
-
-      while (true)
-      {
-
-        HttpListenerContext context = await Listener.GetContextAsync().ConfigureAwait(false);
-
-        if (context.Request.IsWebSocketRequest)
-        {
-          HttpListenerWebSocketContext webSocketContext = await context
-            .AcceptWebSocketAsync(null)
-            .ConfigureAwait(false);
-
-          WebSocket webSocket = webSocketContext.WebSocket;
-          using (Rpc = new JsonRpc(new WebSocketMessageHandler(webSocket)))
-          {
-            try
-            {
-              Rpc.TraceSource.Switch.Level = SourceLevels.All;
-              Rpc.TraceSource.Listeners.Add(new DefaultTraceListener());
-              Rpc.AddLocalRpcTargets(Resolver.GetAllSvcs());
-              Rpc.StartListening();
-              Console.WriteLine("JSON-RPC protocol over web socket established.");
-
-              await Rpc.Completion.ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-              // Close the web socket gracefully -- before JsonRpc is disposed to avoid the socket going into an aborted state.
-              await webSocket
-                .CloseAsync(WebSocketCloseStatus.NormalClosure, "Client closing", CancellationToken.None)
-                .ConfigureAwait(false);
-            }
-          }
-        }
-      }
+      Server.StopAsync();
+      base.Dispose();
     }
 
-      // Set HasSettings to true, and uncomment this method to add your custom logic for settings
-      // /// <inheritdoc />
-      // public override void ShowSettings()
-      // {
-      // }
+    /// <inheritdoc />
+    public override void ShowSettings()
+    {
+    }
 
-      #endregion
-
+    #endregion
 
 
+    #region Methods
 
-      #region Methods
-
-      // Uncomment to register an event handler for element changed events
-      // [LogToErrorOnException]
-      // public void OnElementChanged(SMDisplayedElementChangedEventArgs e)
-      // {
-      //   try
-      //   {
-      //     Insert your logic here
-      //   }
-      //   catch (RemotingException) { }
-      // }
-
-      #endregion
+    #endregion
   }
 }

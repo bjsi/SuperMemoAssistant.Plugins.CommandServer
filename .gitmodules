@@ -1,0 +1,3 @@
+[submodule "src/SMAInteropConverter"]
+	path = src/SMAInteropConverter
+	url = https://github.com/bjsi/SMAInteropConverter

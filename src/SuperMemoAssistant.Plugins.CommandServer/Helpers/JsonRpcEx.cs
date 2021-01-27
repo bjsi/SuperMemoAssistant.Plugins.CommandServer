@@ -1,4 +1,5 @@
-﻿using StreamJsonRpc;
+﻿using Anotar.Serilog;
+using StreamJsonRpc;
 using System.Collections.Generic;
 
 namespace SuperMemoAssistant.Plugins.CommandServer.Helpers
@@ -18,6 +19,8 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Helpers
                   EventNameTransform = CommonMethodNameTransforms.Prepend(name),
                   MethodNameTransform = CommonMethodNameTransforms.Prepend(name)
                 });
+
+        LogTo.Debug($"Added {name} service");
       }
     }
   }

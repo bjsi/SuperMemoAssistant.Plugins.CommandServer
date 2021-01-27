@@ -1,12 +1,8 @@
-﻿using SuperMemoAssistant.Interop.SuperMemo;
-using SuperMemoAssistant.Interop.SuperMemo.Content.Controls;
-using SuperMemoAssistant.Plugins.CommandServer.Helpers;
+﻿using SuperMemoAssistant.Plugins.CommandServer.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace SuperMemoAssistant.Plugins.CommandServer.Generator
 {
@@ -63,7 +59,7 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Generator
         if (!t.IsSimpleType())
         {
           // TODO: IControl, IControlGroup, IComponent, IComponentGroup and Control/Component Registries are messed up
-          if (t == typeof(IControlGroup)) // IControlGroup inherits IEnumerable and IControl
+          if (t.Name.Contains("IControlGroup")) // IControlGroup inherits IEnumerable and IControl
             ret.Add(t);
           else if (t.IsGenericType)
             ret.UnionWith(UnwrapGenericParams(t));

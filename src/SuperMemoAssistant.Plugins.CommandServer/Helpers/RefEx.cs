@@ -59,8 +59,6 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Helpers
 
     public static Dictionary<Type, Type> CreateRegistryMap(ISuperMemoRegistry reg)
     {
-      reg.ThrowIfArgumentNull("Failed to create registry map because ISuperMemoRegistry was null");
-
       var ret = new Dictionary<Type, Type>();
       foreach (var prop in typeof(ISuperMemoRegistry).GetProperties())
       {
@@ -82,8 +80,6 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Helpers
     public static string ToGenericTypeString(this Type t)
     {
 
-      t.ThrowIfArgumentNull("Failed to convert to generic type string because object was null.");
-
       if (!t.IsGenericType)
         return t.Name;
       string genericTypeName = t.GetGenericTypeDefinition().Name;
@@ -104,8 +100,6 @@ namespace SuperMemoAssistant.Plugins.CommandServer.Helpers
     public static bool IsSimpleType(
       this Type type)
     {
-
-      type.ThrowIfArgumentNull("Failed to check if type is simple type because type was null");
 
       return
         type.IsPrimitive ||
