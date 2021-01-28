@@ -74,15 +74,15 @@ namespace SuperMemoAssistant.Plugins.CommandServer
 
     private async Task SocketProcessingLoopAsync(ConnectedClient client)
     {
+      LogTo.Debug($"Client {client.SocketId} entering processing loop");
       var socket = client.Socket;
-      var loopToken = SocketLoopTokenSource.Token; // recv async
       try
       {
         using (var handler = new WebSocketMessageHandler(client.Socket))
         using (var Rpc = new JsonRpc(handler))
         {
           Rpc.TraceSource.Switch.Level = SourceLevels.All;
-          Rpc.TraceSource.Listeners.Add(new DefaultTraceListener());
+          Rpc.TraceSource.Listeners.Add(new DefaultTraceListener {LogFileName = @"C:\Users\james\Desktop\websocket\log.txt" });
           Rpc.AddLocalRpcTargets(Services.Values);
           Rpc.StartListening();
           await Rpc.Completion.ConfigureAwait(false);
@@ -91,17 +91,18 @@ namespace SuperMemoAssistant.Plugins.CommandServer
       catch (OperationCanceledException)
       {
         // normal upon task/token cancellation, disregard
+        LogTo.Debug("Token cancelled. Closing...");
         await client.Socket
           .CloseAsync(WebSocketCloseStatus.NormalClosure, "Client closing", CancellationToken.None)
           .ConfigureAwait(false);
       }
       catch (Exception ex)
       {
-        Console.WriteLine($"Socket {client.SocketId}:");
+        LogTo.Debug($"Socket {client.SocketId}: caught exception {ex}");
       }
       finally
       {
-        Console.WriteLine($"Socket {client.SocketId}: Ended processing loop in state {socket.State}");
+        LogTo.Debug($"Socket {client.SocketId}: Ended processing loop in state {socket.State}");
 
         // don't leave the socket in any potentially connected state
         if (client.Socket.State != WebSocketState.Closed)
@@ -135,20 +136,20 @@ namespace SuperMemoAssistant.Plugins.CommandServer
       while (Clients.Count > 0)
       {
         var client = Clients.ElementAt(0).Value;
-        Console.WriteLine($"Closing Socket {client.SocketId}");
+        LogTo.Debug($"Closing Socket {client.SocketId}");
 
-        Console.WriteLine("... ending broadcast loop");
+        LogTo.Debug("... ending broadcast loop");
 
         if (client.Socket.State != WebSocketState.Open)
         {
-          Console.WriteLine($"... socket not open, state = {client.Socket.State}");
+          LogTo.Debug($"... socket not open, state = {client.Socket.State}");
         }
         else
         {
           var timeout = new CancellationTokenSource(2500);
           try
           {
-            Console.WriteLine("... starting close handshake");
+            LogTo.Debug("... starting close handshake");
             await client.Socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", timeout.Token);
           }
           catch (OperationCanceledException ex)
@@ -163,7 +164,7 @@ namespace SuperMemoAssistant.Plugins.CommandServer
           disposeQueue.Add(client.Socket);
         }
 
-        Console.WriteLine("... done");
+        LogTo.Debug("... done");
       }
 
       // now that they're all closed, terminate the blocking ReceiveAsync calls in the SocketProcessingLoop threads
@@ -176,6 +177,7 @@ namespace SuperMemoAssistant.Plugins.CommandServer
 
     private async Task ListenerProcessingLoopAsync()
     {
+      LogTo.Debug("Command server beginning listener processing loop");
       var cancellationToken = ListenerLoopTokenSource.Token;
       try
       {
@@ -219,7 +221,7 @@ namespace SuperMemoAssistant.Plugins.CommandServer
       }
       catch (HttpListenerException ex) when (ServerIsRunning)
       {
-        // Program.ReportException(ex);
+        LogTo.Debug(ex.Message);
       }
     }
   }

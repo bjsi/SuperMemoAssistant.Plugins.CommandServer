@@ -140,14 +140,24 @@ namespace SuperMemoAssistant.Plugins.CommandServer
         if (skip.Any(x => regPair.Registry.Name.Contains(x)))
           continue;
 
-        services.Add(Activator.CreateInstance(CompileService(regPairs, regPair.Registry)));
-        services.Add(Activator.CreateInstance(CompileService(regPairs, regPair.Member)));
+        var regSvc = Activator.CreateInstance(CompileService(regPairs, regPair.Registry));
+        if (regSvc == null)
+          LogTo.Debug($"Registry service {regPair.Registry.Name} was null");
+        services.Add(regSvc);
+
+        var regMemSvc = Activator.CreateInstance(CompileService(regPairs, regPair.Member));
+        if (regMemSvc == null)
+          LogTo.Debug($"Registry member service {regPair.Member.Name} was null");
+        services.Add(regMemSvc);
       }
 
       var uis = typeExtractor.GetUITypes();
       foreach (var ui in uis)
       {
-        services.Add(Activator.CreateInstance(CompileService(regPairs, ui)));
+        var uiSvc = Activator.CreateInstance(CompileService(regPairs, ui));
+        if (uiSvc == null)
+          LogTo.Debug($"UI service {ui.Name} was null");
+        services.Add(uiSvc);
       }
 
       Server = new WebsocketServer(services);
