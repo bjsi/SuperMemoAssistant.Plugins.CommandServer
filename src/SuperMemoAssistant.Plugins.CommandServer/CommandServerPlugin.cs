@@ -21,6 +21,8 @@ using SuperMemoAssistant.Interop.SuperMemo.Elements.Types;
 using SuperMemoAssistant.Plugins.CommandServer.Helpers;
 using SuperMemoAssistant.Plugins.CommandServer.Services.DI;
 using SuperMemoAssistant.Services;
+using SuperMemoAssistant.Services.IO.HotKeys;
+using SuperMemoAssistant.Services.UI.Configuration;
 using SuperMemoAssistant.Sys.Remoting;
 
 #region License & Metadata
@@ -97,7 +99,7 @@ namespace SuperMemoAssistant.Plugins.CommandServer
 
     private async Task LoadConfig()
     {
-      Config = await Svc.Configuration.Load<CommandServerCfg>() ?? new CommandServerCfg();
+      Config = await Svc.Configuration.Load<CommandServerCfg>().ConfigureAwait(false) ?? new CommandServerCfg();
     }
 
     private string GetCurrentInteropVersion()
@@ -105,7 +107,7 @@ namespace SuperMemoAssistant.Plugins.CommandServer
       var a = Assembly.GetExecutingAssembly()
                       .GetReferencedAssemblies()
                       .First(x => x.Name == "SuperMemoAssistant.Interop");
-      return a.Version.ToString();
+      return Assembly.ReflectionOnlyLoad(a.FullName).Location;
     }
 
     private Type CompileService(List<RegistryType> regTypes, Type type)
@@ -123,17 +125,16 @@ namespace SuperMemoAssistant.Plugins.CommandServer
     protected override void PluginInit()
     {
 
-      // LoadConfig(); // TODO
+      LoadConfig().Wait();
 
-      // TODO: Swap with GetThisInterop()
-      var dll = @"C:\Users\james\.nuget\packages\supermemoassistant.interop\2.0.4.10\lib\net472\SuperMemoAssistant.Interop.dll";
+      var dll = GetCurrentInteropVersion();
       var typeExtractor = new InteropTypeExtractor(dll);
 
       var regPairs = typeExtractor.GetRegistries();
 
       var services = new List<object>();
-      //var skip = new string[] { "IText", "IVideo", "ISound", "IImage", "ITemplate" };
       var skip = new string[] { "IText", "IVideo", "ISound", "IImage", "ITemplate" };
+
       // Add registry services
       foreach (var regPair in regPairs)
       {
@@ -161,7 +162,7 @@ namespace SuperMemoAssistant.Plugins.CommandServer
       }
 
       Server = new WebsocketServer(services);
-      Server.Start("localhost", 13000);
+      Server.Start(Config.Host, Config.Port);
     }
 
     public override void Dispose()
@@ -173,6 +174,7 @@ namespace SuperMemoAssistant.Plugins.CommandServer
     /// <inheritdoc />
     public override void ShowSettings()
     {
+      ConfigurationWindow.ShowAndActivate(HotKeyManager.Instance, Config);
     }
 
     #endregion
