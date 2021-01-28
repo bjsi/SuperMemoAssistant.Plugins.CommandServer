@@ -77,7 +77,7 @@ namespace SuperMemoAssistant.Plugins.CommandServer
     public override string Name => "CommandServer";
 
     /// <inheritdoc />
-    public override bool HasSettings => false;
+    public override bool HasSettings => true;
     public CommandServerCfg Config { get; private set; }
     private WebsocketServer Server { get; set; }
 
