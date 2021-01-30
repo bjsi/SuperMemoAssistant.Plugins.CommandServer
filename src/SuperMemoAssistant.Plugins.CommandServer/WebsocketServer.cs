@@ -5,6 +5,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.WebSockets;
@@ -82,7 +83,7 @@ namespace SuperMemoAssistant.Plugins.CommandServer
         using (var Rpc = new JsonRpc(handler))
         {
           Rpc.TraceSource.Switch.Level = SourceLevels.All;
-          Rpc.TraceSource.Listeners.Add(new DefaultTraceListener {LogFileName = @"C:\Users\james\Desktop\websocket\log.txt" });
+          Rpc.TraceSource.Listeners.Add(new DefaultTraceListener { LogFileName = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "rpc-trace-log.txt") });
           Rpc.AddLocalRpcTargets(Services.Values);
           Rpc.StartListening();
           await Rpc.Completion.ConfigureAwait(false);

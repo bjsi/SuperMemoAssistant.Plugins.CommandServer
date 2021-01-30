@@ -1,29 +1,17 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
-using System.Net;
-using System.Net.WebSockets;
 using System.Reflection;
-using System.Threading;
 using System.Threading.Tasks;
 using Anotar.Serilog;
-using Newtonsoft.Json;
 using SMAInteropConverter;
 using SMAInteropConverter.Helpers;
-using StreamJsonRpc;
 using SuperMemoAssistant.Interop.Plugins;
-using SuperMemoAssistant.Interop.SuperMemo.Core;
-using SuperMemoAssistant.Interop.SuperMemo.Elements;
-using SuperMemoAssistant.Interop.SuperMemo.Elements.Types;
 using SuperMemoAssistant.Plugins.CommandServer.Helpers;
-using SuperMemoAssistant.Plugins.CommandServer.Services.DI;
 using SuperMemoAssistant.Services;
 using SuperMemoAssistant.Services.IO.HotKeys;
 using SuperMemoAssistant.Services.UI.Configuration;
-using SuperMemoAssistant.Sys.Remoting;
 
 #region License & Metadata
 
