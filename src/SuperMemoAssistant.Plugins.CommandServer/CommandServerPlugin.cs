@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -98,9 +99,9 @@ namespace SuperMemoAssistant.Plugins.CommandServer
       return Assembly.ReflectionOnlyLoad(a.FullName).Location;
     }
 
-    private Type CompileService(List<RegistryType> regTypes, Type type)
+    private Type CompileService(List<RegistryType> regTypes, Type type, string xmlPath)
     {
-      var converter = new Converter(regTypes, type, s => LogTo.Debug(s));
+      var converter = new Converter(regTypes, type, xmlPath, s => LogTo.Debug(s));
       var results = converter.WithGetters()
                              .WithSetters()
                              .WithMethods()
@@ -116,6 +117,7 @@ namespace SuperMemoAssistant.Plugins.CommandServer
       LoadConfig().Wait();
 
       var dll = GetCurrentInteropVersion();
+      var xml = Path.ChangeExtension(dll, ".xml");
       var typeExtractor = new InteropTypeExtractor(dll);
 
       var regPairs = typeExtractor.GetRegistries();
@@ -129,12 +131,12 @@ namespace SuperMemoAssistant.Plugins.CommandServer
         if (skip.Any(x => regPair.Registry.Name.Contains(x)))
           continue;
 
-        var regSvc = Activator.CreateInstance(CompileService(regPairs, regPair.Registry));
+        var regSvc = Activator.CreateInstance(CompileService(regPairs, regPair.Registry, xml));
         if (regSvc == null)
           LogTo.Debug($"Registry service {regPair.Registry.Name} was null");
         services.Add(regSvc);
 
-        var regMemSvc = Activator.CreateInstance(CompileService(regPairs, regPair.Member));
+        var regMemSvc = Activator.CreateInstance(CompileService(regPairs, regPair.Member, xml));
         if (regMemSvc == null)
           LogTo.Debug($"Registry member service {regPair.Member.Name} was null");
         services.Add(regMemSvc);
@@ -143,7 +145,7 @@ namespace SuperMemoAssistant.Plugins.CommandServer
       var uis = typeExtractor.GetUITypes();
       foreach (var ui in uis)
       {
-        var uiSvc = Activator.CreateInstance(CompileService(regPairs, ui));
+        var uiSvc = Activator.CreateInstance(CompileService(regPairs, ui, xml));
         if (uiSvc == null)
           LogTo.Debug($"UI service {ui.Name} was null");
         services.Add(uiSvc);
